@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Официант">
+<meta name="theme-color" content="#111418">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Официант</title>
+<style>
+  :root{
+    --bg:#111418; --panel:#1a1f25; --panel2:#222932; --line:#2c343f;
+    --text:#e8eef5; --muted:#8b97a6; --accent:#3aa6ff; --accent2:#2bd07a;
+    --warn:#ff5d5d; --gold:#f0b400;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.3 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;overflow:hidden}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;cursor:pointer}
+  button:hover{background:#2a323d}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.ok{background:var(--accent2);border-color:var(--accent2);color:#0a1d12;font-weight:600}
+  button.warn{background:transparent;border-color:var(--warn);color:var(--warn)}
+  button.ghost{background:transparent}
+  input,select,textarea{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+  .row{display:flex;gap:8px;align-items:center}
+  .col{display:flex;flex-direction:column;gap:8px}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--muted)}
+  .hidden{display:none!important}
+
+  #app{display:flex;flex-direction:column;height:100%}
+  nav{display:flex;gap:4px;padding:8px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+  nav button{padding:8px 14px;border-radius:8px}
+  nav button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  main{flex:1;overflow:hidden;position:relative}
+  .view{position:absolute;inset:0;overflow:auto;padding:12px}
+
+  .hall-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  #hall{position:relative;width:100%;height:calc(100% - 56px);
+    border:1px solid var(--line);border-radius:12px;overflow:auto;-webkit-overflow-scrolling:touch}
+  #hall-canvas{position:relative;background:
+    linear-gradient(var(--line) 1px,transparent 1px) 0 0/40px 40px,
+    linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/40px 40px,
+    var(--panel);min-width:100%;min-height:100%}
+  .table{position:absolute;width:80px;height:80px;border-radius:14px;background:var(--panel2);border:2px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px;
+    cursor:pointer;user-select:none;touch-action:none}
+  .table.has-order{border-color:var(--accent);background:#11293f;color:var(--accent)}
+  .table.editing{box-shadow:0 0 0 3px var(--accent)}
+
+  .list{display:flex;flex-direction:column;gap:6px}
+  .list .item{display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .item .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .price{color:var(--muted);min-width:70px;text-align:right}
+
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:stretch;justify-content:center;z-index:50}
+  .modal .sheet{background:var(--bg);width:100%;max-width:720px;display:flex;flex-direction:column;border-left:1px solid var(--line);border-right:1px solid var(--line)}
+  .modal header{padding:calc(10px + env(safe-area-inset-top)) 12px 10px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;background:var(--panel)}
+  .modal header h2{margin:0;font-size:18px}
+  .modal .body{flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:10px}
+  .modal footer{padding:10px 10px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:8px;background:var(--panel)}
+
+  .guests{display:flex;gap:6px;flex-wrap:wrap}
+  .guest-tab{padding:6px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;display:flex;gap:6px;align-items:center}
+  .guest-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .guest-tab .x{opacity:.7;font-size:12px}
+
+  .cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+  .cats button{white-space:nowrap}
+  .cats button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .dish-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+  .dish-btn{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:64px}
+  .dish-btn:hover{border-color:var(--accent)}
+  .dish-btn .dn{font-weight:600;line-height:1.2}
+  .dish-btn .dp{color:var(--muted);font-size:13px}
+
+  .order-lines{display:flex;flex-direction:column;gap:8px}
+  .ol-wrap{position:relative;border-radius:10px;overflow:hidden;background:var(--panel)}
+  .ol-bg{position:absolute;inset:0;display:flex;align-items:center;padding:0 18px;font-size:22px;color:#fff;font-weight:700;opacity:0;transition:opacity .12s}
+  .ol-bg.show{opacity:1}
+  .ol-bg-left{justify-content:flex-start;background:var(--warn)}
+  .ol-bg-right{justify-content:flex-end;background:var(--accent2);color:#0a1d12}
+  .ol{position:relative;display:flex;gap:10px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 12px;touch-action:pan-y;will-change:transform}
+  .ol .name{flex:1;min-width:0;font-weight:600}
+  .ol .item-comment{display:block;font-weight:400;color:var(--accent2);font-size:13px;margin-top:2px}
+  .ol .qty{display:flex;align-items:center;gap:6px}
+  .ol .qty button{padding:6px 14px;min-width:40px;font-size:18px}
+  .ol .qty .q{min-width:28px;text-align:center;font-weight:700}
+  .ol-total{text-align:right;font-weight:700;padding:6px 4px}
+
+  .settings{max-width:560px;display:flex;flex-direction:column;gap:12px}
+  .settings label{display:flex;flex-direction:column;gap:4px}
+  .settings small{color:var(--muted)}
+
+  @media (max-width:600px){
+    nav button{padding:7px 10px;font-size:14px}
+    .modal .sheet{max-width:100%}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="nav"></nav>
+  <main>
+    <section id="view-hall" class="view"></section>
+    <section id="view-menu" class="view hidden"></section>
+    <section id="view-cats" class="view hidden"></section>
+    <section id="view-settings" class="view hidden"></section>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+const LS_KEY = "waiter_v1";
+const LS_SECRETS = "waiter_secrets_v1";
+
+const defaultState = {
+  tables: [],
+  categories: [],
+  dishes: [],
+  orders: {},
+  ui: {edit:false}
+};
+
+let state = load();
+let secrets = loadSecrets();
+let syncStatus = "idle";
+let syncMsg = "";
+
+function load(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw) return structuredClone(defaultState);
+    return Object.assign(structuredClone(defaultState), JSON.parse(raw));
+  }catch{ return structuredClone(defaultState); }
+}
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+function saveData(){ save(); pushData(); }
+function loadSecrets(){
+  try{ return JSON.parse(localStorage.getItem(LS_SECRETS)||"{}"); }catch{ return {}; }
+}
+function saveSecrets(){ localStorage.setItem(LS_SECRETS, JSON.stringify(secrets)); }
+const uid = ()=>Math.random().toString(36).slice(2,9);
+
+/* ---------- sync ---------- */
+function api(path, opts={}){
+  if(!secrets.workerUrl || !secrets.accessKey) throw new Error("Не настроен Worker (вкладка Настройки)");
+  const url = secrets.workerUrl.replace(/\/+$/,"") + path;
+  return fetch(url, {
+    ...opts,
+    headers: {
+      ...(opts.headers||{}),
+      "x-access-key": secrets.accessKey,
+      ...(opts.body?{"content-type":"application/json"}:{})
+    }
+  });
+}
+async function pullData(){
+  if(!secrets.workerUrl || !secrets.accessKey) return;
+  syncStatus="pulling"; syncMsg=""; updateSyncBadge();
+  try{
+    const r = await api("/api/data");
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d = await r.json();
+    state.tables     = Array.isArray(d.tables)     ? d.tables     : [];
+    state.categories = Array.isArray(d.categories) ? d.categories : [];
+    state.dishes     = Array.isArray(d.dishes)     ? d.dishes     : [];
+    save();
+    syncStatus="idle"; updateSyncBadge();
+    if(currentTab==="hall") renderHall();
+    if(currentTab==="menu") renderMenu();
+    if(currentTab==="cats") renderCats();
+  }catch(e){
+    syncStatus="error"; syncMsg=e.message; updateSyncBadge();
+  }
+}
+let pushT=null;
+function pushData(){
+  if(!secrets.workerUrl || !secrets.accessKey) return;
+  clearTimeout(pushT);
+  syncStatus="pushing"; updateSyncBadge();
+  pushT = setTimeout(async ()=>{
+    try{
+      const r = await api("/api/data",{
+        method:"PUT",
+        body: JSON.stringify({tables:state.tables, categories:state.categories, dishes:state.dishes})
+      });
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      syncStatus="idle"; updateSyncBadge();
+    }catch(e){
+      syncStatus="error"; syncMsg=e.message; updateSyncBadge();
+    }
+  }, 400);
+}
+function updateSyncBadge(){
+  const el = document.getElementById("sync-badge");
+  if(!el) return;
+  const map = {
+    idle:    {t:"●", c:"var(--accent2)", title:"Синхронизировано"},
+    pulling: {t:"↓", c:"var(--accent)",  title:"Загрузка с сервера…"},
+    pushing: {t:"↑", c:"var(--accent)",  title:"Сохранение на сервер…"},
+    error:   {t:"!", c:"var(--warn)",    title:"Ошибка: "+syncMsg},
+  };
+  const s = map[syncStatus]||map.idle;
+  el.textContent = s.t;
+  el.style.color = s.c;
+  el.title = s.title;
+}
+
+/* ---------- nav ---------- */
+const tabs = [
+  {id:"hall",     name:"Зал"},
+  {id:"menu",     name:"Меню"},
+  {id:"cats",     name:"Категории"},
+  {id:"settings", name:"Настройки"},
+];
+let currentTab = "hall";
+function renderNav(){
+  const nav = document.getElementById("nav");
+  nav.innerHTML = "";
+  for(const t of tabs){
+    const b = document.createElement("button");
+    b.textContent = t.name;
+    if(t.id===currentTab) b.classList.add("active");
+    b.onclick = ()=>switchTab(t.id);
+    nav.appendChild(b);
+  }
+  const spacer = document.createElement("span"); spacer.style.flex="1"; nav.appendChild(spacer);
+  const badge = document.createElement("button");
+  badge.id = "sync-badge"; badge.className = "ghost";
+  badge.style.cssText = "min-width:36px;font-weight:700;font-size:18px";
+  badge.onclick = ()=>pullData();
+  nav.appendChild(badge);
+  updateSyncBadge();
+}
+function switchTab(id){
+  currentTab = id;
+  for(const t of tabs){
+    document.getElementById("view-"+t.id).classList.toggle("hidden", t.id!==id);
+  }
+  renderNav();
+  if(id==="hall") renderHall();
+  if(id==="menu") renderMenu();
+  if(id==="cats") renderCats();
+  if(id==="settings") renderSettings();
+}
+
+/* ---------- hall ---------- */
+function renderHall(){
+  const v = document.getElementById("view-hall");
+  v.innerHTML = "";
+  const bar = document.createElement("div");
+  bar.className = "hall-toolbar";
+  bar.innerHTML = `
+    <button id="btn-edit-hall">${state.ui.edit?"Готово":"Редактировать зал"}</button>
+    <button id="btn-add-table" class="${state.ui.edit?"":"hidden"}">+ Стол</button>
+    <span class="muted">${state.ui.edit?"Перетащи стол. Долгое нажатие — удалить.":"Тапни стол, чтобы открыть заказ."}</span>
+  `;
+  v.appendChild(bar);
+
+  const hall = document.createElement("div");
+  hall.id = "hall";
+  const canvas = document.createElement("div");
+  canvas.id = "hall-canvas";
+  let maxX = 0, maxY = 0;
+  for(const t of state.tables){ if(t.x>maxX) maxX=t.x; if(t.y>maxY) maxY=t.y; }
+  const cw = Math.max(1000, maxX + 200);
+  const ch = Math.max(700,  maxY + 200);
+  canvas.style.width  = cw + "px";
+  canvas.style.height = ch + "px";
+  hall.appendChild(canvas);
+  v.appendChild(hall);
+
+  for(const t of state.tables) canvas.appendChild(makeTableEl(t));
+
+  applyHallScale();
+}
+
+function applyHallScale(){
+  const hall = document.getElementById("hall");
+  const canvas = document.getElementById("hall-canvas");
+  if(!hall || !canvas) return;
+  const isMobile = window.matchMedia("(max-width: 700px)").matches;
+  // базовый размер по столам
+  let maxX=0, maxY=0;
+  for(const t of state.tables){ if(t.x>maxX) maxX=t.x; if(t.y>maxY) maxY=t.y; }
+  let cw = Math.max(1000, maxX + 200);
+  let ch = Math.max(700,  maxY + 200);
+  if(isMobile){
+    const hw = hall.clientWidth - 2;
+    const hh = hall.clientHeight - 2;
+    // подгоняем аспект холста под аспект контейнера, чтобы scale покрыл оба измерения
+    if(hw/hh > cw/ch) cw = ch * hw/hh; else ch = cw * hh/hw;
+    canvas.style.width = cw+"px";
+    canvas.style.height = ch+"px";
+    const s = hw/cw;
+    canvas.style.transformOrigin = "top left";
+    canvas.style.transform = `scale(${s})`;
+    canvas.dataset.scale = s;
+    hall.style.overflow = "hidden";
+  } else {
+    canvas.style.width = cw+"px";
+    canvas.style.height = ch+"px";
+    canvas.style.transform = "";
+    canvas.dataset.scale = "1";
+    hall.style.overflow = "auto";
+  }
+
+  document.getElementById("btn-edit-hall").onclick = ()=>{
+    state.ui.edit = !state.ui.edit; save(); renderHall();
+  };
+  const addBtn = document.getElementById("btn-add-table");
+  if(addBtn) addBtn.onclick = ()=>{
+    const n = state.tables.length + 1;
+    state.tables.push({id:uid(), x:20+((n-1)%6)*100, y:20+Math.floor((n-1)/6)*100, label:String(n)});
+    saveData(); renderHall();
+  };
+}
+function makeTableEl(t){
+  const el = document.createElement("div");
+  el.className = "table";
+  el.style.left = t.x+"px";
+  el.style.top  = t.y+"px";
+  el.dataset.id = t.id;
+  const order = state.orders[t.id];
+  const itemsCount = order ? order.guests.reduce((s,g)=>s+g.items.reduce((a,i)=>a+i.qty,0),0) : 0;
+  if(itemsCount>0) el.classList.add("has-order");
+  el.innerHTML = `<div style="text-align:center"><div>№${t.label}</div>${itemsCount?`<div style="font-size:12px;font-weight:400">${itemsCount} поз.</div>`:""}</div>`;
+
+  if(state.ui.edit){
+    el.classList.add("editing");
+    let dragging=false, startX=0, startY=0, origX=0, origY=0, holdT=null, moved=false;
+    el.addEventListener("pointerdown", e=>{
+      e.preventDefault();
+      dragging=true; moved=false;
+      el.setPointerCapture(e.pointerId);
+      startX=e.clientX; startY=e.clientY; origX=t.x; origY=t.y;
+      holdT = setTimeout(()=>{
+        if(!moved){
+          state.tables = state.tables.filter(x=>x.id!==t.id);
+          delete state.orders[t.id];
+          saveData(); renderHall();
+        }
+      }, 600);
+    });
+    el.addEventListener("pointermove", e=>{
+      if(!dragging) return;
+      const canvas = document.getElementById("hall-canvas");
+      const scale = parseFloat(canvas.dataset.scale)||1;
+      const dx=(e.clientX-startX)/scale, dy=(e.clientY-startY)/scale;
+      if(Math.abs(dx)+Math.abs(dy)>4){ moved=true; clearTimeout(holdT); }
+      const cw = canvas.clientWidth, ch = canvas.clientHeight;
+      let nx = Math.max(0, Math.min(cw-80, origX+dx));
+      let ny = Math.max(0, Math.min(ch-80, origY+dy));
+      t.x = Math.round(nx/10)*10; t.y = Math.round(ny/10)*10;
+      el.style.left=t.x+"px"; el.style.top=t.y+"px";
+    });
+    el.addEventListener("pointerup", e=>{
+      dragging=false; clearTimeout(holdT);
+      if(moved) saveData();
+      else {
+        const newLabel = prompt("Название/номер стола:", t.label);
+        if(newLabel){ t.label=newLabel.trim()||t.label; saveData(); renderHall(); }
+      }
+    });
+    el.addEventListener("pointercancel", ()=>{dragging=false;clearTimeout(holdT);});
+  } else {
+    el.onclick = ()=>openOrder(t.id);
+  }
+  return el;
+}
+
+/* ---------- categories ---------- */
+function renderCats(){
+  const v = document.getElementById("view-cats");
+  v.innerHTML = `
+    <div class="row" style="margin-bottom:10px">
+      <input id="cat-name" class="grow" placeholder="Новая категория…">
+      <button id="cat-add" class="primary">Добавить</button>
+    </div>
+    <div class="list" id="cat-list"></div>
+  `;
+  const list = v.querySelector("#cat-list");
+  for(const c of state.categories){
+    const row = document.createElement("div");
+    row.className="item";
+    row.innerHTML = `<input class="name grow" value="${escapeHtml(c.name)}"><button class="warn">×</button>`;
+    row.querySelector("input").onchange = e=>{ c.name=e.target.value.trim()||c.name; saveData(); };
+    row.querySelector("button").onclick = ()=>{
+      state.categories = state.categories.filter(x=>x.id!==c.id);
+      for(const d of state.dishes) if(d.categoryId===c.id) d.categoryId=null;
+      saveData(); renderCats();
+    };
+    list.appendChild(row);
+  }
+  v.querySelector("#cat-add").onclick = ()=>{
+    const name = v.querySelector("#cat-name").value.trim();
+    if(!name) return;
+    state.categories.push({id:uid(),name});
+    saveData(); renderCats();
+  };
+}
+
+/* ---------- menu ---------- */
+function renderMenu(){
+  const v = document.getElementById("view-menu");
+  v.innerHTML = `
+    <div class="row" style="margin-bottom:10px;flex-wrap:wrap">
+      <input id="d-name" placeholder="Название блюда" class="grow" style="min-width:160px">
+      <select id="d-cat"></select>
+      <button id="d-add" class="primary">+ Добавить</button>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <input id="d-search" placeholder="Поиск…" class="grow">
+      <select id="d-filter"></select>
+    </div>
+    <div class="list" id="d-list"></div>
+  `;
+  const catSel = v.querySelector("#d-cat");
+  const filterSel = v.querySelector("#d-filter");
+  const fillCats = (sel, withAll)=>{
+    sel.innerHTML = (withAll?`<option value="">Все категории</option>`:`<option value="">Без категории</option>`)
+      + state.categories.map(c=>`<option value="${c.id}">${escapeHtml(c.name)}</option>`).join("");
+  };
+  fillCats(catSel,false); fillCats(filterSel,true);
+
+  const listEl = v.querySelector("#d-list");
+  const draw = ()=>{
+    const q = v.querySelector("#d-search").value.trim().toLowerCase();
+    const cf = filterSel.value;
+    listEl.innerHTML = "";
+    const items = state.dishes.filter(d=>{
+      if(cf && d.categoryId!==cf) return false;
+      if(q && !d.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    if(!items.length){ listEl.innerHTML=`<div class="muted">Ничего не найдено.</div>`; return; }
+    for(const d of items){
+      const row = document.createElement("div");
+      row.className="item";
+      row.innerHTML = `
+        <input class="name grow" value="${escapeHtml(d.name)}">
+        <select style="max-width:140px"></select>
+        <button class="warn">×</button>`;
+      const [nameI,catI,delB] = row.children;
+      catI.innerHTML = `<option value="">—</option>` + state.categories.map(c=>`<option value="${c.id}" ${c.id===d.categoryId?"selected":""}>${escapeHtml(c.name)}</option>`).join("");
+      nameI.onchange = e=>{ d.name=e.target.value.trim()||d.name; saveData(); };
+      catI.onchange  = e=>{ d.categoryId=e.target.value||null; saveData(); };
+      delB.onclick   = ()=>{ state.dishes=state.dishes.filter(x=>x.id!==d.id); saveData(); draw(); };
+      listEl.appendChild(row);
+    }
+  };
+  v.querySelector("#d-search").oninput = draw;
+  filterSel.onchange = draw;
+  v.querySelector("#d-add").onclick = ()=>{
+    const name = v.querySelector("#d-name").value.trim();
+    const categoryId = catSel.value||null;
+    if(!name) return;
+    state.dishes.push({id:uid(),name,categoryId});
+    v.querySelector("#d-name").value="";
+    saveData(); draw();
+  };
+  draw();
+}
+
+/* ---------- order ---------- */
+let modalEl = null;
+let activeOrder = null;
+
+function openOrder(tableId){
+  if(!state.orders[tableId]) state.orders[tableId] = {guests:[]};
+  if(state.orders[tableId].guests.length===0) state.orders[tableId].guests.push({name:"Гость 1",items:[]});
+  activeOrder = {tableId, guestIdx:0, catFilter:"", search:""};
+  drawOrder();
+}
+function closeOrder(){
+  if(modalEl){ modalEl.remove(); modalEl=null; }
+  activeOrder=null;
+  for(const tid of Object.keys(state.orders)){
+    const o = state.orders[tid];
+    const total = o.guests.reduce((s,g)=>s+g.items.reduce((a,i)=>a+i.qty,0),0);
+    if(total===0) delete state.orders[tid];
+  }
+  save(); renderHall();
+}
+function drawOrder(){
+  const {tableId, guestIdx, catFilter, search} = activeOrder;
+  const table = state.tables.find(t=>t.id===tableId);
+  const order = state.orders[tableId];
+  const guest = order.guests[guestIdx];
+
+  if(!modalEl){
+    modalEl = document.createElement("div");
+    modalEl.className = "modal";
+    modalEl.innerHTML = `<div class="sheet">
+      <header>
+        <button id="o-close">← К залу</button>
+        <h2 id="o-title" style="margin-left:6px"></h2>
+      </header>
+      <div class="body" id="o-body"></div>
+      <footer>
+        <button id="o-clear" class="warn">Очистить</button>
+        <span class="grow"></span>
+        <button id="o-send" class="ok">Отправить в Telegram</button>
+      </footer>
+    </div>`;
+    document.body.appendChild(modalEl);
+    modalEl.querySelector("#o-close").onclick = closeOrder;
+    modalEl.querySelector("#o-send").onclick  = sendOrder;
+    modalEl.querySelector("#o-clear").onclick = ()=>{
+      delete state.orders[tableId];
+      closeOrder();
+    };
+  }
+  modalEl.querySelector("#o-title").textContent = `Стол №${table.label}`;
+
+  const body = modalEl.querySelector("#o-body");
+  body.innerHTML = "";
+
+  const gWrap = document.createElement("div");
+  gWrap.className = "col";
+  const gTabs = document.createElement("div");
+  gTabs.className = "guests";
+  order.guests.forEach((g,i)=>{
+    const t = document.createElement("div");
+    t.className = "guest-tab"+(i===guestIdx?" active":"");
+    const cnt = g.items.reduce((a,i)=>a+i.qty,0);
+    t.innerHTML = `<span>${escapeHtml(g.name)}${cnt?` · ${cnt}`:""}</span>${order.guests.length>1?`<span class="x" title="Удалить">×</span>`:""}`;
+    t.onclick = (ev)=>{
+      if(ev.target.classList.contains("x")){
+        order.guests.splice(i,1);
+        activeOrder.guestIdx = Math.max(0, Math.min(activeOrder.guestIdx, order.guests.length-1));
+        save(); drawOrder();
+        return;
+      }
+      activeOrder.guestIdx = i; drawOrder();
+    };
+    let pressT=null;
+    t.addEventListener("pointerdown",()=>{ pressT=setTimeout(()=>renameGuest(g),550); });
+    t.addEventListener("pointerup",()=>clearTimeout(pressT));
+    t.addEventListener("pointercancel",()=>clearTimeout(pressT));
+    t.addEventListener("dblclick",()=>renameGuest(g));
+    gTabs.appendChild(t);
+  });
+  const addG = document.createElement("button");
+  addG.textContent = "+ Гость";
+  addG.onclick = ()=>{
+    order.guests.push({name:"Гость "+(order.guests.length+1),items:[]});
+    activeOrder.guestIdx = order.guests.length-1;
+    save(); drawOrder();
+  };
+  gWrap.appendChild(gTabs);
+  gWrap.appendChild(addG);
+  body.appendChild(gWrap);
+
+  const filterRow = document.createElement("div");
+  filterRow.className="col";
+  filterRow.innerHTML = `
+    <input id="o-search" placeholder="Поиск блюда…" value="${escapeHtml(search||"")}">
+    <div class="cats" id="o-cats"></div>
+  `;
+  body.appendChild(filterRow);
+  const cats = filterRow.querySelector("#o-cats");
+  const mkCatBtn = (id,name)=>{
+    const b = document.createElement("button");
+    b.textContent = name;
+    if((catFilter||"")===id) b.classList.add("active");
+    b.onclick = ()=>{ activeOrder.catFilter=id; drawOrder(); };
+    return b;
+  };
+  cats.appendChild(mkCatBtn("","Все"));
+  for(const c of state.categories) cats.appendChild(mkCatBtn(c.id,c.name));
+  cats.appendChild(mkCatBtn("__none__","Без категории"));
+  filterRow.querySelector("#o-search").oninput = e=>{
+    activeOrder.search = e.target.value;
+    drawDishes();
+  };
+
+  const grid = document.createElement("div");
+  grid.className = "dish-grid";
+  body.appendChild(grid);
+
+  function drawDishes(){
+    grid.innerHTML = "";
+    const q = (activeOrder.search||"").trim().toLowerCase();
+    const cf = activeOrder.catFilter||"";
+    const items = state.dishes.filter(d=>{
+      if(cf==="__none__"){ if(d.categoryId) return false; }
+      else if(cf){ if(d.categoryId!==cf) return false; }
+      if(q && !d.name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+    if(!items.length){ grid.innerHTML = `<div class="muted">Ничего не найдено. Добавь блюда во вкладке «Меню».</div>`; return; }
+    for(const d of items){
+      const b = document.createElement("button");
+      b.className = "dish-btn";
+      b.innerHTML = `<div class="dn">${escapeHtml(d.name)}</div>`;
+      b.onclick = ()=>{
+        const it = guest.items.find(i=>i.dishId===d.id);
+        if(it) it.qty++; else guest.items.push({dishId:d.id,qty:1});
+        save(); drawOrder();
+      };
+      grid.appendChild(b);
+    }
+  }
+  drawDishes();
+
+  const lines = document.createElement("div");
+  lines.className = "order-lines";
+  if(guest.items.length){
+    for(const it of guest.items){
+      const d = state.dishes.find(x=>x.id===it.dishId);
+      if(!d) continue;
+      lines.appendChild(makeOrderLine(it, d, guest));
+    }
+  } else {
+    lines.innerHTML = `<div class="muted">У гостя пусто. Тапни блюдо выше, чтобы добавить. Свайп влево — комментарий, свайп вправо — удалить.</div>`;
+  }
+  body.appendChild(lines);
+
+  const commentWrap = document.createElement("div");
+  commentWrap.className = "col";
+  commentWrap.style.marginTop = "6px";
+  commentWrap.innerHTML = `
+    <label class="muted" style="font-size:13px">Комментарий к заказу</label>
+    <textarea id="o-comment" rows="2" placeholder="Например: без лука, отдать после горячего…">${escapeHtml(order.comment||"")}</textarea>
+  `;
+  commentWrap.querySelector("#o-comment").addEventListener("input", e=>{
+    order.comment = e.target.value;
+    save();
+  });
+  body.appendChild(commentWrap);
+
+  const totalAll = sumOrder(order);
+  if(totalAll>0){
+    const totRow = document.createElement("div");
+    totRow.className = "ol-total";
+    totRow.style.borderTop = "1px solid var(--line)";
+    totRow.style.paddingTop = "8px";
+    totRow.textContent = `Итог по столу: ${totalAll} ₽`;
+    body.appendChild(totRow);
+  }
+}
+function makeOrderLine(it, d, guest){
+  const wrap = document.createElement("div");
+  wrap.className = "ol-wrap";
+  wrap.innerHTML = `
+    <div class="ol-bg ol-bg-left"><span>🗑 Удалить</span></div>
+    <div class="ol-bg ol-bg-right"><span>💭 Комментарий</span></div>
+    <div class="ol">
+      <div class="name">${escapeHtml(d.name)}${it.comment?`<span class="item-comment">💬 ${escapeHtml(it.comment)}</span>`:""}</div>
+      <div class="qty">
+        <button data-a="-">−</button>
+        <span class="q">${it.qty}</span>
+        <button data-a="+">+</button>
+      </div>
+    </div>`;
+  const card = wrap.querySelector(".ol");
+  card.querySelectorAll(".qty button").forEach(btn=>{
+    btn.onclick = e=>{
+      e.stopPropagation();
+      const a = btn.dataset.a;
+      if(a==="+") it.qty++;
+      else { it.qty--; if(it.qty<=0) guest.items = guest.items.filter(x=>x!==it); }
+      save(); drawOrder();
+    };
+  });
+
+  let startX=0, startY=0, dx=0, swiping=false, locked=null;
+  const TH = 90;
+  card.addEventListener("pointerdown", e=>{
+    if(e.target.closest(".qty")) return;
+    swiping=true; locked=null; startX=e.clientX; startY=e.clientY; dx=0;
+    card.style.transition="none";
+    card.setPointerCapture(e.pointerId);
+  });
+  card.addEventListener("pointermove", e=>{
+    if(!swiping) return;
+    const ddx = e.clientX-startX, ddy = e.clientY-startY;
+    if(locked===null){
+      if(Math.abs(ddx)<6 && Math.abs(ddy)<6) return;
+      locked = Math.abs(ddx) > Math.abs(ddy) ? "h" : "v";
+    }
+    if(locked!=="h"){ swiping=false; card.style.transform=""; return; }
+    e.preventDefault();
+    dx = ddx;
+    card.style.transform = `translateX(${dx}px)`;
+    wrap.querySelector(".ol-bg-left").classList.toggle("show",  dx > 0);
+    wrap.querySelector(".ol-bg-right").classList.toggle("show", dx < 0);
+  });
+  const finish = ()=>{
+    if(!swiping){ return; }
+    swiping=false;
+    card.style.transition="transform .2s";
+    if(dx > TH){
+      card.style.transform = `translateX(120%)`;
+      setTimeout(()=>{
+        guest.items = guest.items.filter(x=>x!==it);
+        save(); drawOrder();
+      }, 180);
+    } else if(dx < -TH){
+      card.style.transform = "";
+      promptItemComment(it);
+    } else {
+      card.style.transform = "";
+    }
+    dx = 0;
+  };
+  card.addEventListener("pointerup", finish);
+  card.addEventListener("pointercancel", ()=>{ swiping=false; card.style.transition="transform .2s"; card.style.transform=""; dx=0; });
+  return wrap;
+}
+
+function promptItemComment(it){
+  const c = prompt("Комментарий к блюду:", it.comment||"");
+  if(c===null) return;
+  it.comment = c.trim();
+  save(); drawOrder();
+}
+
+function renameGuest(g){
+  const n = prompt("Имя гостя:", g.name);
+  if(n!==null){ g.name = n.trim()||g.name; save(); drawOrder(); }
+}
+function sumOrder(order){
+  let s=0;
+  for(const g of order.guests) for(const it of g.items){
+    const d = state.dishes.find(x=>x.id===it.dishId);
+    if(d) s += (d.price||0)*it.qty;
+  }
+  return s;
+}
+
+/* ---------- send via Worker ---------- */
+async function sendOrder(){
+  if(!secrets.workerUrl || !secrets.accessKey){
+    alert("Сначала укажи URL воркера и ключ доступа во вкладке «Настройки».");
+    switchTab("settings"); return;
+  }
+  const {tableId} = activeOrder;
+  const table = state.tables.find(t=>t.id===tableId);
+  const order = state.orders[tableId];
+  const total = sumOrder(order);
+  if(total===0 && !order.guests.some(g=>g.items.length)){ alert("Заказ пуст."); return; }
+  const lines = [`🧾 *Заказ — Стол №${table.label}*`];
+  if(secrets.waiterName) lines.push(`Официант: ${secrets.waiterName}`);
+  lines.push("");
+  for(const g of order.guests){
+    if(!g.items.length) continue;
+    lines.push(`*${g.name}*`);
+    for(const it of g.items){
+      const d = state.dishes.find(x=>x.id===it.dishId);
+      if(!d) continue;
+      lines.push(`  • ${d.name} × ${it.qty}${it.comment?`  💬 ${it.comment}`:""}`);
+    }
+    lines.push("");
+  }
+  if(order.comment && order.comment.trim()){
+    lines.push("");
+    lines.push(`💬 _${order.comment.trim()}_`);
+  }
+  lines.push(`_${new Date().toLocaleString("ru-RU")}_`);
+  const text = lines.join("\n");
+
+  const btn = modalEl.querySelector("#o-send");
+  btn.disabled = true; btn.textContent = "Отправка…";
+  try{
+    const r = await api("/api/send",{method:"POST", body: JSON.stringify({text})});
+    const j = await r.json().catch(()=>({}));
+    if(!r.ok || j.error) throw new Error(j.error||("HTTP "+r.status));
+    delete state.orders[tableId];
+    closeOrder();
+    toast("Отправлено в Telegram ✓");
+  }catch(e){
+    alert("Ошибка отправки: "+e.message);
+    btn.disabled=false; btn.textContent="Отправить в Telegram";
+  }
+}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  const v = document.getElementById("view-settings");
+  v.innerHTML = `
+    <div class="settings">
+      <h3 style="margin:0">Подключение к серверу (Cloudflare Worker)</h3>
+      <label>URL воркера
+        <input id="s-url" placeholder="https://waiter.username.workers.dev" value="${escapeHtml(secrets.workerUrl||"")}">
+      </label>
+      <label>Ключ доступа (ACCESS_KEY)
+        <input id="s-key" type="password" autocomplete="off" value="${escapeHtml(secrets.accessKey||"")}">
+        <small>Тот же, что задан в переменных воркера. Хранится только в этом браузере.</small>
+      </label>
+      <label>Имя официанта (необязательно)
+        <input id="s-waiter" value="${escapeHtml(secrets.waiterName||"")}">
+      </label>
+      <div class="row" style="flex-wrap:wrap">
+        <button id="s-save" class="primary">Сохранить и подключиться</button>
+        <button id="s-test">Тестовое сообщение</button>
+        <button id="s-pull">Подтянуть с сервера</button>
+      </div>
+
+      <h3 style="margin-top:18px">Данные</h3>
+      <div class="row" style="flex-wrap:wrap">
+        <button id="s-export">Экспорт JSON</button>
+        <button id="s-import">Импорт JSON</button>
+        <button id="s-reset" class="warn">Очистить локально</button>
+        <input id="s-file" type="file" accept="application/json" style="display:none">
+      </div>
+      <small class="muted">Импорт заменит локальные данные и отправит их на сервер.</small>
+    </div>
+  `;
+  v.querySelector("#s-save").onclick = async ()=>{
+    secrets.workerUrl  = v.querySelector("#s-url").value.trim().replace(/\/+$/,"");
+    secrets.accessKey  = v.querySelector("#s-key").value.trim();
+    secrets.waiterName = v.querySelector("#s-waiter").value.trim();
+    saveSecrets();
+    await pullData();
+    if(syncStatus==="error") alert("Не удалось подключиться: "+syncMsg);
+    else toast("Подключено");
+  };
+  v.querySelector("#s-test").onclick = async ()=>{
+    secrets.workerUrl  = v.querySelector("#s-url").value.trim().replace(/\/+$/,"");
+    secrets.accessKey  = v.querySelector("#s-key").value.trim();
+    saveSecrets();
+    if(!secrets.workerUrl||!secrets.accessKey){ alert("Заполни URL и ключ"); return; }
+    try{
+      const r = await api("/api/send",{method:"POST", body:JSON.stringify({text:"✅ Тест: связь работает."})});
+      const j = await r.json().catch(()=>({}));
+      if(!r.ok || j.error) throw new Error(j.error||("HTTP "+r.status));
+      toast("Сообщение отправлено");
+    }catch(e){ alert("Ошибка: "+e.message); }
+  };
+  v.querySelector("#s-pull").onclick = async ()=>{
+    await pullData();
+    if(syncStatus==="error") alert("Ошибка: "+syncMsg); else toast("Готово");
+  };
+  v.querySelector("#s-export").onclick = ()=>{
+    const data = {tables:state.tables, categories:state.categories, dishes:state.dishes};
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "waiter-data.json";
+    a.click();
+  };
+  v.querySelector("#s-import").onclick = ()=>v.querySelector("#s-file").click();
+  v.querySelector("#s-file").onchange = async (e)=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{
+      const j = JSON.parse(await f.text());
+      if(j.tables) state.tables = j.tables;
+      if(j.categories) state.categories = j.categories;
+      if(j.dishes) state.dishes = j.dishes;
+      saveData(); toast("Импортировано");
+    }catch(err){ alert("Не удалось прочитать файл: "+err.message); }
+  };
+  v.querySelector("#s-reset").onclick = ()=>{
+    state = structuredClone(defaultState);
+    save(); toast("Очищено"); switchTab("hall");
+  };
+}
+
+/* ---------- utils ---------- */
+function escapeHtml(s){ return String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+let toastT=null;
+function toast(msg){
+  let el = document.getElementById("toast");
+  if(!el){ el = document.createElement("div"); el.id="toast";
+    el.style.cssText="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:10px;z-index:200;box-shadow:0 4px 16px rgba(0,0,0,.4)";
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.style.opacity = 1;
+  clearTimeout(toastT);
+  toastT = setTimeout(()=>{ el.style.transition="opacity .4s"; el.style.opacity=0; }, 1600);
+}
+
+renderNav();
+switchTab("hall");
+pullData();
+window.addEventListener("resize", ()=>{ if(currentTab==="hall") applyHallScale(); });
+window.addEventListener("orientationchange", ()=>{ if(currentTab==="hall") setTimeout(applyHallScale,200); });
+</script>
+</body>
+</html>
